@@ -1,23 +1,5 @@
-const fs = require('fs');
-const path = require('path');
-
+const db = require('../util/database');
 const Cart = require('./cart');
-
-const p = path.join(
-  path.dirname(process.mainModule.filename),
-  'data',
-  'products.json'
-);
-
-const getProductsFromFile = cb => {
-  fs.readFile(p, (err, fileContent) => {
-    if (err) {
-      cb([]);
-    } else {
-      cb(JSON.parse(fileContent));
-    }
-  });
-};
 
 module.exports = class Product {
   constructor(id, title, imageUrl, description, price) {
@@ -29,46 +11,61 @@ module.exports = class Product {
   }
 
   save() {
-    getProductsFromFile(products => {
-      if (this.id) {
-        const existingProductIndex = products.findIndex(
-          prod => prod.id === this.id
-        );
-        const updatedProducts = [...products];
-        updatedProducts[existingProductIndex] = this;
-        fs.writeFile(p, JSON.stringify(updatedProducts), err => {
-          console.log(err);
-        });
-      } else {
-        this.id = Math.random().toString();
-        products.push(this);
-        fs.writeFile(p, JSON.stringify(products), err => {
-          console.log(err);
-        });
-      }
-    });
+    return db.execute('insert into products (title, price, imageUrl, description) values (?,?,?,?)', [this.title, this.price, this.imageUrl, this.description]); //vahan ? lagake bahar array bnakr bhi daal skte hain...
+    // ab admin.js of controller mai jake postaddproduct mai isko call kiya hai vahan
+    // exports.postAddProduct = (req, res, next) => {
+    //   const title = req.body.title;
+    //   const imageUrl = req.body.imageUrl;
+    //   const price = req.body.price;
+    //   const description = req.body.description;
+    //   const product = new Product(null, title, imageUrl, description, price);
+    //   product.save()
+    //     .then(() => {
+    //       res.redirect('/');
+    //     })
+    //     .catch(err => { console.log(err) });
+
+    // };
   }
 
   static deleteById(id) {
-    getProductsFromFile(products => {
-      const product = products.find(prod => prod.id === id);
-      const updatedProducts = products.filter(prod => prod.id !== id);
-      fs.writeFile(p, JSON.stringify(updatedProducts), err => {
-        if (!err) {
-          Cart.deleteProduct(id, product.price);
-        }
-      });
-    });
+
   }
 
-  static fetchAll(cb) {
-    getProductsFromFile(cb);
+
+  static fetchAll() { //jos is function ko call krega use ye return karega,ab controller folder mai shop folder pe jake vahan isko call kr rhe hoge 
+    // aur vahn aisa banao
+    // exports.getIndex = (req, res, next) => {
+    //   Product.fetchAll()
+    //   .then(([rows, fieldData]) => {
+    //     res.render('shop/index', {
+    //       prods: rows, //ye products honge
+    //       pageTitle: 'Shop',
+    //       path: '/'
+    //     });
+    //   })
+    //   .catch(err => console.log(err))
+    // };
+    // aur isko aise bnao=>
+    // exports.getProducts = (req, res, next) => { //ye product vale icon mai ye produc dikhayega.
+    //   Product.fetchAll() .then(([rows, fieldData]) => {
+    //     res.render('shop/product-list', {
+    //       prods: rows, //ye products honge
+    //       pageTitle: 'All Products',
+    //       path: '/products'
+    //     });
+    //   })
+    //   .catch(err => console.log(err))
+    // };
+
+    return db.execute('select * from products')
   }
 
-  static findById(id, cb) {
-    getProductsFromFile(products => {
-      const product = products.find(p => p.id === id);
-      cb(product);
-    });
+  static findById(id) { //ye kisi ek particular ki deatil pta karne ke liye hai
+    return db.execute('select * from products where products.id = ?', [id]);//single id vale ko lena hai to ye karna padhega... 
+  }
+
+  static deleteProduct(id) {
+    return db.execute('delete from products where products.id=?', [id]);
   }
 };
